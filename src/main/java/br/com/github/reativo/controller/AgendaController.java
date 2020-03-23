@@ -52,14 +52,13 @@ public class AgendaController {
     public Mono<ResponseEntity<Agenda>> alterar(@PathVariable Integer id, @RequestBody Mono<Agenda> agenda) {
         
         return agenda.filter(a -> a.getId().equals(id))
-                .flatMap(a -> this.repository.findById(a.getId())
-                        .flatMap(editar -> {
-                            editar.setNome(a.getNome());
-                            editar.setEmail(a.getEmail());
-                            return this.repository.save(editar);
-                        })
-                
-                ).map(a -> ResponseEntity.ok(a))
+                .flatMap(a -> Mono.zip(Mono.just(a), this.repository.findById(a.getId())))
+                .flatMap(zip -> { 
+                    zip.getT2().setNome(zip.getT1().getNome());
+                    zip.getT2().setEmail(zip.getT1().getEmail());
+                    return this.repository.save(zip.getT2());
+                })
+                .map(a -> ResponseEntity.ok(a))
                 .defaultIfEmpty(ResponseEntity.notFound().build());
     }
     
